@@ -438,19 +438,19 @@ EOF
 #######################################
 system_certbot_install() {
   print_banner
-  printf "${WHITE} 💻 Instalando certbot...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Gerando certificado autoassinado...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
 
   sudo su - root <<EOF
-  apt-get remove certbot
-  snap install --classic certbot
-  ln -s /snap/bin/certbot /usr/bin/certbot
+  mkdir -p /etc/nginx/ssl
+  openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/ssl/selfsigned.key -out /etc/nginx/ssl/selfsigned.crt -subj "/CN=localhost"
 EOF
 
   sleep 2
 }
+
 
 #######################################
 # installs nginx
@@ -521,7 +521,7 @@ EOF
 #######################################
 system_certbot_setup() {
   print_banner
-  printf "${WHITE} 💻 Configurando certbot...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Configurando certificados autoassinados...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
@@ -530,12 +530,8 @@ system_certbot_setup() {
   frontend_domain=$(echo "${frontend_url/https:\/\/}")
 
   sudo su - root <<EOF
-  certbot -m $deploy_email \
-          --nginx \
-          --agree-tos \
-          --non-interactive \
-          --domains $backend_domain,$frontend_domain
-
+  # Certificados já gerados, aqui só podemos usar as variáveis para o que for necessário
+  echo "Certificados autoassinados configurados para $backend_domain e $frontend_domain"
 EOF
 
   sleep 2
