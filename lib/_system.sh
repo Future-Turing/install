@@ -163,26 +163,25 @@ EOF
   sleep 2
 }
 
-#######################################
-# alter dominio system
-# Arguments:
-#   None
-#######################################
 configurar_dominio() {
   print_banner
-  printf "${WHITE} 💻 Vamos Alterar os Dominios do Canal Vem Fazer...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Vamos Alterar os Domínios do Canal Vem Fazer...${GRAY_LIGHT}"
   printf "\n\n"
 
-sleep 2
+  sleep 2
 
   sudo su - root <<EOF
   cd && rm -rf /etc/nginx/sites-enabled/${empresa_dominio}-frontend
   cd && rm -rf /etc/nginx/sites-enabled/${empresa_dominio}-backend  
   cd && rm -rf /etc/nginx/sites-available/${empresa_dominio}-frontend
   cd && rm -rf /etc/nginx/sites-available/${empresa_dominio}-backend
+
+  # Gerando certificados autoassinados
+  mkdir -p /etc/nginx/ssl
+  openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/ssl/${empresa_dominio}.key -out /etc/nginx/ssl/${empresa_dominio}.crt -subj "/CN=${empresa_dominio}"
 EOF
 
-sleep 2
+  sleep 2
 
   sudo su - deploy <<EOF
   cd && cd /home/deploy/${empresa_dominio}/frontend
@@ -192,14 +191,19 @@ sleep 2
   sed -i "3c\FRONTEND_URL=https://${alter_frontend_url}" .env 
 EOF
 
-sleep 2
+  sleep 2
    
-   backend_hostname=$(echo "${alter_backend_url/https:\/\/}")
+  backend_hostname=$(echo "${alter_backend_url/https:\/\/}")
 
- sudo su - root <<EOF
+  sudo su - root <<EOF
   cat > /etc/nginx/sites-available/${empresa_dominio}-backend << 'END'
 server {
+  listen 443 ssl;
   server_name $backend_hostname;
+
+  ssl_certificate /etc/nginx/ssl/${empresa_dominio}.crt;
+  ssl_certificate_key /etc/nginx/ssl/${empresa_dominio}.key;
+
   location / {
     proxy_pass http://127.0.0.1:${alter_backend_port};
     proxy_http_version 1.1;
@@ -216,14 +220,19 @@ END
 ln -s /etc/nginx/sites-available/${empresa_dominio}-backend /etc/nginx/sites-enabled
 EOF
 
-sleep 2
+  sleep 2
 
-frontend_hostname=$(echo "${alter_frontend_url/https:\/\/}")
+  frontend_hostname=$(echo "${alter_frontend_url/https:\/\/}")
 
-sudo su - root << EOF
+  sudo su - root << EOF
 cat > /etc/nginx/sites-available/${empresa_dominio}-frontend << 'END'
 server {
+  listen 443 ssl;
   server_name $frontend_hostname;
+
+  ssl_certificate /etc/nginx/ssl/${empresa_dominio}.crt;
+  ssl_certificate_key /etc/nginx/ssl/${empresa_dominio}.key;
+
   location / {
     proxy_pass http://127.0.0.1:${alter_frontend_port};
     proxy_http_version 1.1;
@@ -240,11 +249,12 @@ END
 ln -s /etc/nginx/sites-available/${empresa_dominio}-frontend /etc/nginx/sites-enabled
 EOF
 
- sleep 2
+  sleep 2
 
- sudo su - root <<EOF
+  sudo su - root <<EOF
   service nginx restart
 EOF
+}
 
   sleep 2
 
